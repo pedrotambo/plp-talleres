@@ -44,31 +44,7 @@ ab7 = Bin (Bin (abHoja 1) 2 (abHoja 4)) 5 (abHoja 7)
 ab8 = Bin (mapAB (*2) ab8) 1 (mapAB ((+1) . (*2)) ab8)
 
 -- Ejercicios
-a = Bin Nil 3 Nil
-b = Bin a 10 Nil
-c = Bin a 500 b
 
-unABBYNoHeap = Bin Nil 3 (Bin Nil 10 Nil)
-
-unHeapYNoABB = c
-
-hoja :: a -> AB a
-hoja a = Bin Nil a Nil
-
-unNoHeap = Bin (Bin (Bin (Bin Nil 1 Nil) 2 Nil) 5 Nil) 10 (hoja 20)
-
-unCompleto = Bin a 1000 a
-
--- si izq completo y tiene mas nodos q el arbol derecho, inserto en el derecho
--- si tiene igual va a al izquierdo
-
-unNoCompleto = unHeapYNoABB
-
-suma = recAB 0 (\izq v der ri rd -> (v+ri+rd))
-
-suma2 = foldAB 0 (\i r d -> r + i + d) 
-
-unHeapPiola = Bin (hoja 5) 20 (hoja 10)
 
 --recAB ::
 --recAB = undefined
@@ -159,7 +135,7 @@ insertarHeap p ab e =
             ) ab
 
 
-truncar :: AB a -> Integer -> AB a
+truncar :: AB a -> Int -> AB a
 truncar ab t =
       recAB Nil (\i r d ri rd ->
           if t == 0
@@ -170,6 +146,53 @@ truncar ab t =
 -- Ejecución de los tests
 main :: IO Counts
 main = do runTestTT allTests
+
+-- Variables para tests
+raizMayorADiez = Bin (Bin Nil 15 Nil) 19 (Bin Nil 3 Nil)
+conUnTres = Bin (Bin Nil 15 Nil) 19 (Bin Nil 3 Nil)
+
+arbolVacio = Nil
+
+a = Bin Nil 3 Nil
+b = Bin a 10 Nil
+c = Bin a 500 b
+
+unABBYNoHeap = Bin Nil 3 (Bin Nil 10 Nil)
+
+unMaxHeapYNoABB = Bin (abHoja 3) 500 (abHoja 10)
+
+unMinHeap = Bin (abHoja 1000) 2 (abHoja 15000)
+
+unNoHeap = Bin (Bin (Bin (Bin Nil 1 Nil) 2 Nil) 5 Nil) 10 (abHoja 20)
+
+unCompleto = Bin a 1000 a
+
+unaHoja = abHoja 5
+
+unArbolConCuatroNodos = insertarHeap (<) unMinHeap 10
+
+unNoCompleto = unMaxHeapYNoABB
+
+unHeapPiola = Bin (abHoja 5) 20 (abHoja 10)
+
+unMaxHeapSimple = Bin (abHoja 5) 20 (Bin Nil 10 (abHoja 7))
+
+unMinHeapSimple = Bin (abHoja 5) 2 (Bin Nil 7 (abHoja 20))
+
+unCasoHeapAlturaMal = Bin (abHoja 5) 20 (Bin Nil 10 (Bin Nil 7 (abHoja 2)))
+
+
+completoConTresNodos :: a -> a -> a -> AB a
+completoConTresNodos i r d = Bin (abHoja i) r (abHoja d)
+
+unArbolCompleto = Bin (completoConTresNodos 10 100 1) 1000 (completoConTresNodos 5 500 10)
+
+-- cambiamos el tipo de truncar de integer a int
+truncarHastaAnteUltimoNivel :: AB a -> AB a
+truncarHastaAnteUltimoNivel = (\ab -> truncar ab (altura ab - 1) )
+
+listaToHeap :: Ord a => [a] -> AB a
+listaToHeap = foldl (insertarHeap (<=)) Nil 
 
 allTests = test [
   "ejercicio1" ~: testsEj1,
@@ -191,23 +214,44 @@ testsEj2 = test [
   ]
 
 testsEj3 = test [
-  0 ~=? 0 --Cambiar esto por tests verdaderos.
+  True ~=? nilOCumple (<) 10 raizMayorADiez,
+  True ~=? nilOCumple (<) 10 arbolVacio,
+  False ~=? nilOCumple (>) 10 raizMayorADiez,
+  True ~=? algunoCumple (==) 3 conUnTres
   ]
 
 testsEj4 = test [
-  0 ~=? 0 --Cambiar esto por tests verdaderos.
+  True ~=? esMaxHeap unMaxHeapYNoABB,
+  False ~=? esMaxHeap unMinHeap,
+  True ~=? esHeap (<=) unMinHeap
   ]
 
 testsEj5 = test [
-  0 ~=? 0 --Cambiar esto por tests verdaderos.
+  0 ~=? cantidadDeNodos arbolVacio,
+  1 ~=? cantidadDeNodos unaHoja,
+  4 ~=? cantidadDeNodos unArbolConCuatroNodos,
+  True ~=? completo unArbolCompleto,
+  True ~=? esMaxHeap unMaxHeapSimple,
+  True ~=? esMinHeap unMinHeapSimple,
+  False ~=? esMaxHeap unCasoHeapAlturaMal
   ]
 
 testsEj6 = test [
   True ~=? esHeap (<) (insertarHeap (<) (insertarHeap (<) ab6 3) 1),
-  True ~=? esABB (insertarABB (insertarABB ab7 6) 9)
+  True ~=? esABB (insertarABB (insertarABB ab7 6) 9),
+  True ~=? esABB (insertarABB (insertarABB unABBYNoHeap 10) 50),
+  True ~=? esMaxHeap (insertarHeap (>=) unMaxHeapSimple 2),
+  True ~=? esMinHeap (insertarHeap (<=) unMinHeapSimple 500)
   ]
 
 testsEj7 = test [
   [8,4,12,2,10,6,14,1,9,5,13,3,11,7,15] ~=? inorder (truncar ab8 4),
   True ~=? esHeap (<) (truncar ab8 5)
+  ]
+
+testsEj8 = test [
+  True ~=? completo (truncar ab8 10),
+  True ~=? esHeap (<) (listaToHeap [1,2,3,4,5,6]),
+  True ~=? esHeap (<) (truncar ab8 20),
+  True ~=? (completo . truncarHastaAnteUltimoNivel) (listaToHeap [1,2,3,4,5,6,135135,134123,12312,312313,1235,-10124,1350135,12310,23123,123])
   ]
